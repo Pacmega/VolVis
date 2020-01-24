@@ -76,7 +76,7 @@ public class Volume {
     }
 
 
-    float a = -0.75f; // global variable that defines the value of a used in cubic interpolation.
+    float a = -0.5f; // global variable that defines the value of a used in cubic interpolation.
     // you need to chose the right value
         
     //////////////////////////////////////////////////////////////////////
@@ -101,10 +101,23 @@ public class Volume {
     // We assume the out of bounce checks have been done earlier
     
     public float cubicinterpolate(float g0, float g1, float g2, float g3, float factor) {
-       
-        // to be implemented              
-        
-        float result = 1.0f;
+
+        // Lets define our values of our kernel at points g0 to g1
+        // kernel is centered in interpolation point  (g1 + factor)
+
+        // distances from kernel origin to all samples
+//        float k_dist_g0 = factor + 1;
+//        float k_dist_g2 = 1 - factor;
+//        float k_dist_g3 = 2 - factor;
+
+        //  reduced forms of kernel values
+        float c_0 = (float) (a* Math.pow(factor, 3)  -  2*a* Math.pow(factor, 2)  +  a*factor);
+        float c_1 = (float) ((a+2) * Math.pow(factor, 3)  -  (a+3)* Math.pow(factor, 2)  +  1);
+        float c_2 = (float) ((-a-2) * Math.pow(factor, 3)  +  (2*a+3)* Math.pow(factor, 2)  -  a*factor);
+        float c_3 = (float) (-a* Math.pow(factor, 3)  +  a* Math.pow(factor, 2) );
+
+        // value at interpolation point
+        float result = c_0 * g0 + c_1 * g1 + c_2 * g2 + c_3 * g3;
                             
         return result; 
     }
@@ -115,11 +128,48 @@ public class Volume {
     // 2D cubic interpolation implemented here. We do it for plane XY. Coord contains the position.
     // We assume the out of bounce checks have been done earlier
     public float bicubicinterpolateXY(double[] coord,int z) {
-            
-        // to be implemented              
-        
-        float result = 1.0f;
-                            
+
+
+        /* notice that in this framework we assume that the distance between neighbouring voxels is 1 in all directions*/
+
+        // get closest coordinates to our point
+        int x = (int) Math.floor(coord[0]);
+        int y = (int) Math.floor(coord[1]);
+
+        // get our fractional distances from position in x and y directions
+        float fac_x = (float) coord[0] - x;
+        float fac_y = (float) coord[1] - y;
+
+        // along x direction, construct 4 points interpolated x
+        float bot_line_x = cubicinterpolate(getVoxel(x-1, y, z),
+                                            getVoxel(x, y, z),
+                                            getVoxel(x+1, y, z),
+                                            getVoxel(x+2, y, z), fac_x);
+
+
+        float top_line_x =  cubicinterpolate(getVoxel(x-1, y+1, z),
+                                             getVoxel(x, y+1, z),
+                                             getVoxel(x+1, y+1, z),
+                                             getVoxel(x+2, y+1, z), fac_x);
+
+
+        float before_bot_line_x = cubicinterpolate(getVoxel(x-1, y-1, z),
+                                                   getVoxel(x, y-1, z),
+                                                   getVoxel(x+1, y-1, z),
+                                                   getVoxel(x+2, y-1, z), fac_x);
+
+
+        float after_top_line_x =  cubicinterpolate(getVoxel(x-1, y+2, z),
+                                                   getVoxel(x, y+2, z),
+                                                   getVoxel(x+1, y+2, z),
+                                                   getVoxel(x+2, y+2, z), fac_x);
+
+        // along y direction, get final value
+        float result =  cubicinterpolate(before_bot_line_x,
+                                         bot_line_x,
+                                         top_line_x,
+                                         after_top_line_x, fac_y);
+
         return result; 
 
     }
@@ -134,10 +184,21 @@ public class Volume {
                 || coord[2] < 1 || coord[2] > (dimZ-3)) {
             return 0;
         }
-       
 
+
+        /* notice that in this framework we assume that the distance between neighbouring voxels is 1 in all directions*/
+        int z = (int) Math.floor(coord[2]);
+        float fac_z = (float) coord[2] - z;
+
+
+        // Get values for the 4 XY planes , along the z direction
+
+        float before_bot_plane_z = bicubicinterpolateXY(coord, z-1);
+        float bot_plane_z = bicubicinterpolateXY(coord, z);
+        float top_plane_z = bicubicinterpolateXY(coord, z+1);
+        float after_top_plane_z = bicubicinterpolateXY(coord,z+2 );
         // to be implemented              
-        float result = 1.0f;
+        float result = cubicinterpolate(before_bot_plane_z,bot_plane_z,top_plane_z,after_top_plane_z, fac_z);
                             
         return result; 
         
