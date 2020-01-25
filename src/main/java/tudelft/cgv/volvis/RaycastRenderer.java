@@ -132,7 +132,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
                 //val = volume.getVoxelNN(pixelCoord);
                 
                 //you have also the function getVoxelLinearInterpolated in Volume.java          
-               // val = (int) volume.getVoxelLinearInterpolate(pixelCoord);
+                //val = (int) volume.getVoxelLinearInterpolate(pixelCoord);
                 
                 //you have to implement this function below to get the cubic interpolation
                 val = (int) volume.getVoxelTriCubicInterpolate(pixelCoord);
@@ -219,7 +219,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
        
         double[] lightVector = new double[3];
         //We define the light vector as directed toward the view point (which is the source of the light)
-        // another light vector would be possible
+        // another light vector would be possible  why not sample _step?
          VectorMath.setVector(lightVector, rayVector[0], rayVector[1], rayVector[2]);
        
         // To be Implemented
@@ -264,45 +264,88 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
    
     public int traceRayComposite(double[] entryPoint, double[] exitPoint, double[] rayVector, double sampleStep) {
         double[] lightVector = new double[3];
-        
+        double[] increments = new double[3];
+        VectorMath.setVector(increments, rayVector[0] * sampleStep, rayVector[1] * sampleStep, rayVector[2] * sampleStep);
         //the light vector is directed toward the view point (which is the source of the light)
-        // another light vector would be possible 
-        VectorMath.setVector(lightVector, rayVector[0], rayVector[1], rayVector[2]);
-        
+        // another light vector would be possible
+
+        // back to front colour compositing
+        VectorMath.setVector(lightVector, rayVector[0] , rayVector[1] , rayVector[2]);
+
+        // Compute the number of times we need to sample
+        double distance = VectorMath.distance(entryPoint, exitPoint);
+        int nrSamples = 1 + (int) Math.floor(VectorMath.distance(entryPoint, exitPoint) / sampleStep);
+
         //Initialization of the colors as floating point values
         double r, g, b;
         r = g = b = 0.0;
         double alpha = 0.0;
         double opacity = 0;
-        
+        int value;
         
         TFColor voxel_color = new TFColor();
         TFColor colorAux = new TFColor();
         
         // To be Implemented this function right now just gives back a constant color depending on the mode
-        
-        if (compositingMode) {
-            // 1D transfer function 
-            voxel_color.r = 1;voxel_color.g =0;voxel_color.b =0;voxel_color.a =1;
-            opacity = 1;
-        }    
-        if (tf2dMode) {
-             // 2D transfer function 
-            voxel_color.r = 0;voxel_color.g =1;voxel_color.b =0;voxel_color.a =1;
-            opacity = 1;      
-        }
-        if (shadingMode) {
-            // Shading mode on
-            voxel_color.r = 1;voxel_color.g =0;voxel_color.b =1;voxel_color.a =1;
-            opacity = 1;     
-        }
-            
-        r = voxel_color.r ;
-        g = voxel_color.g ;
-        b = voxel_color.b;
-        alpha = opacity ;
-            
-        //computes the color
+
+        //the current position is initialized as the entry point
+        double[] currentPos = new double[3];
+        VectorMath.setVector(currentPos, entryPoint[0], entryPoint[1], entryPoint[2]);
+
+        // start sampling from back to now
+        do {
+            value = (int) (volume.getVoxelLinearInterpolate(currentPos));
+
+            if (compositingMode) {
+                // 1D transfer function
+                colorAux= tFunc.getColor(value);
+                voxel_color.r = voxel_color.g = voxel_color.b = colorAux.r;
+
+                opacity = colorAux.a;
+
+                // calculating ci
+                r = g = b = alpha = (1 - opacity) * r + opacity* voxel_color.r;
+
+
+                if(alpha > 1.0){
+                    alpha = 1;
+                    break;
+                }
+                //alpha = alpha + opacity;
+            }
+            if (tf2dMode) {
+                // 2D transfer function
+                voxel_color.r = 0;voxel_color.g =1;voxel_color.b =0;voxel_color.a =1;
+                opacity = 1;
+
+                r = voxel_color.r ;
+                g = voxel_color.g ;
+                b = voxel_color.b;
+                alpha = opacity ;
+            }
+            if (shadingMode) {
+                // Shading mode on
+                voxel_color.r = 1;voxel_color.g =0;voxel_color.b =1;voxel_color.a =1;
+                opacity = 1;
+
+                r = voxel_color.r ;
+                g = voxel_color.g ;
+                b = voxel_color.b;
+                alpha = opacity ;
+
+            }
+
+            for (int i = 0; i < 3; i++) {
+                currentPos[i] += increments[i];
+            }
+
+            // make previous colour
+           // r = voxel_color.r; g = voxel_color.g; b= voxel_color.b; opacity= voxel_color.a;
+
+            nrSamples--;
+        } while (nrSamples > 0);
+
+    //computes the color
         int color = computeImageColor(r,g,b,alpha);
         return color;
     }

@@ -76,7 +76,7 @@ public class Volume {
     }
 
 
-    float a = -0.5f; // global variable that defines the value of a used in cubic interpolation.
+    float a = -0.75f; // global variable that defines the value of a used in cubic interpolation.
     // you need to chose the right value
         
     //////////////////////////////////////////////////////////////////////
@@ -198,8 +198,8 @@ public class Volume {
         float top_plane_z = bicubicinterpolateXY(coord, z+1);
         float after_top_plane_z = bicubicinterpolateXY(coord,z+2 );
         // to be implemented              
-        float result = cubicinterpolate(before_bot_plane_z,bot_plane_z,top_plane_z,after_top_plane_z, fac_z);
-                            
+        float result = cubicinterpolate(before_bot_plane_z,bot_plane_z,top_plane_z,after_top_plane_z, fac_z) ;
+        result = (result > 0)?result: 0;
         return result; 
         
 
