@@ -61,12 +61,9 @@ public class GradientVolume {
 //the resut is given at result. You can use it to tri-linearly interpolate the gradient 
     
 	public void interpolate(VoxelGradient g0, VoxelGradient g1, float factor, VoxelGradient result) {
-            
-            // to be implemented
-            
-        result.x = 1;
-        result.y = 1;
-        result.z = 1;
+        result.x = (1 - factor)*g0.x + factor*g1.x;
+        result.y = (1 - factor)*g0.y + factor*g1.y;
+        result.z = (1 - factor)*g0.z + factor*g1.z;
         result.mag = (float) Math.sqrt(result.x * result.x + result.y * result.y + result.z * result.z);
     }
 	
@@ -77,11 +74,31 @@ public class GradientVolume {
 // right now it returns the nearest neighbour        
         
     public VoxelGradient getGradient(double[] coord) {
-        
-        // to be implemented
+        if (coord[0] < 0 || coord[0] > (dimX-2) || coord[1] < 0 || coord[1] > (dimY-2)
+                || coord[2] < 0 || coord[2] > (dimZ-2)) {
+            return zero;
+        }
 
-        return getGradientNN(coord);
-
+        int x = (int) Math.floor(coord[0]);
+        int y = (int) Math.floor(coord[1]);
+        int z = (int) Math.floor(coord[2]);
+        float fac_x = (float) coord[0] - x;
+        float fac_y = (float) coord[1] - y;
+        float fac_z = (float) coord[2] - z;
+        VoxelGradient r_1 = new VoxelGradient();
+        VoxelGradient r_2 = new VoxelGradient();
+        VoxelGradient r_3 = new VoxelGradient();
+        VoxelGradient r_4 = new VoxelGradient();
+        VoxelGradient r_5 = new VoxelGradient();
+        VoxelGradient result = new VoxelGradient();
+        interpolate(getGradient(x, y, z), getGradient(x + 1, y, z), fac_x, r_1);
+        interpolate(getGradient(x, y + 1, z), getGradient(x + 1, y + 1, z), fac_x, r_2);
+        interpolate(getGradient(x, y, z + 1), getGradient(x + 1, y, z + 1), fac_x, r_3);
+        interpolate(getGradient(x, y+1, z + 1), getGradient(x + 1, y+1, z + 1), fac_x, r_4);
+        interpolate(r_1, r_2, fac_y, r_5);
+        interpolate(r_3, r_4, fac_y, result);
+        interpolate(r_5, result, fac_z, result);
+        return result;
     }
     
     
