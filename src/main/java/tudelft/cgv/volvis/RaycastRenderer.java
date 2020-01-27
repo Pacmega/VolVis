@@ -4,6 +4,7 @@ package tudelft.cgv.volvis;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.math.VectorUtil;
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.awt.AWTTextureIO;
 import tudelft.cgv.gui.RaycastRendererPanel;
@@ -184,7 +185,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
        
         double maximum = 0;
         do {
-            double value = volume.getVoxelLinearInterpolate(currentPos)/255.; 
+            double value = volume.getVoxelLinearInterpolate(currentPos)/255.;
             if (value > maximum) {
                 maximum = value;
             }
@@ -216,29 +217,48 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     //ray must be sampled with a distance defined by the sampleStep
    
    public int traceRayIso(double[] entryPoint, double[] exitPoint, double[] rayVector, double sampleStep) {
-       
         double[] lightVector = new double[3];
         //We define the light vector as directed toward the view point (which is the source of the light)
         // another light vector would be possible
-         VectorMath.setVector(lightVector, rayVector[0], rayVector[1], rayVector[2]);
+        VectorMath.setVector(lightVector, rayVector[0], rayVector[1], rayVector[2]);
        
         // To be Implemented
               
         //Initialization of the colors as floating point values
-        double r, g, b;
-        r = g = b = 0.0;
-        double alpha = 0.0;
-        double opacity = 0;
-        
-              
+        boolean hit = false;
+
         // To be Implemented this function right now just gives back a constant color
-        
-        
-         // isoColor contains the isosurface color from the interface
-         r = isoColor.r;g = isoColor.g;b =isoColor.b;alpha =1.0;
+        double distance = VectorMath.distance(entryPoint, exitPoint);
+        int nrSamples = 1 + (int) Math.floor(distance / sampleStep);
+        double[] increments = new double[3];
+        double[] currentPos = new double[3];
+        VectorMath.setVector(increments, rayVector[0] * sampleStep, rayVector[1] * sampleStep, rayVector[2] * sampleStep);
+        VectorMath.setVector(currentPos, entryPoint[0], entryPoint[1], entryPoint[2]);
+        float previousValue = 0f;
+       double[] hitPos = null;
+        do {
+            float value = volume.getVoxelLinearInterpolate(currentPos);
+            if (value > this.iso_value) {
+                hit = true;
+                hitPos = bisection_accuracy(currentPos, increments, sampleStep, previousValue, value, iso_value);
+                break;
+            }
+            previousValue = value;
+            for (int i = 0; i < 3; i++) {
+               currentPos[i] += increments[i];
+            }
+            nrSamples--;
+        } while (nrSamples > 0);
         //computes the color
-        int color = computeImageColor(r,g,b,alpha);
-        return color;
+        if (hit) {
+            if (hitPos == null) {
+                hitPos = currentPos;
+            }
+            TFColor color = computePhongShading(isoColor, this.gradients.getGradient(hitPos) , lightVector, rayVector);
+            return computeImageColor(color.r, color.g, color.b, color.a);
+        } else {
+            return computeImageColor(0,0, 0, 1);
+        }
     }
    
     //////////////////////////////////////////////////////////////////////
@@ -248,10 +268,16 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     // Given the current sample position, increment vector of the sample (vector from previous sample to current sample) and sample Step. 
    // Previous sample value and current sample value, isovalue value
     // The function should search for a position where the iso_value passes that it is more precise.
-   public void  bisection_accuracy (double[] currentPos, double[] increments,double sampleStep, float previousvalue,float value, float iso_value)
+   public double[]  bisection_accuracy (double[] currentPos, double[] increments,double sampleStep, float previousvalue, float value, float iso_value)
    {
-
-           // to be implemented
+       double diffPrev = value - previousvalue;
+       double diffIso = value - iso_value;
+       double scale = diffIso/diffPrev;
+       return new double[]{
+               currentPos[0] - increments[0]*scale,
+               currentPos[1] - increments[1]*scale,
+               currentPos[2] - increments[2]*scale
+       };
    }
     
     //////////////////////////////////////////////////////////////////////
@@ -313,12 +339,23 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     // Compute Phong Shading given the voxel color (material color), the gradient, the light vector and view vector 
     public TFColor computePhongShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector,
             double[] rayVector) {
+        double k_a = 0.1;
+        double k_d = 0.7;
+        double k_s = 0.2;
+        double alpha = 100;
 
-        // To be implemented 
-        
-        TFColor color = new TFColor(0,0,0,1);
-        
-        
+        double[] gradientVector = new double[]{gradient.x / gradient.mag, gradient.y / gradient.mag, gradient.z / gradient.mag};
+        double reflectDot =  VectorMath.dotproduct(lightVector, gradientVector);
+        double[] reflectVector = new double[]{
+            2 *gradientVector[0] * reflectDot - lightVector[0],
+            2 *gradientVector[1] * reflectDot - lightVector[1],
+            2 *gradientVector[2] * reflectDot - lightVector[2],
+        };
+
+        double sWeight = Math.max(k_s * Math.pow(VectorMath.dotproduct(reflectVector, rayVector), alpha), 0.);
+        double dWeight = Math.max(k_d * reflectDot, 0.);
+        double weight = k_a + dWeight + sWeight;
+        TFColor color = new TFColor(voxel_color.r * weight, voxel_color.g * weight, voxel_color.b * weight, 1);
         return color;
     }
     
