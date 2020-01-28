@@ -338,14 +338,19 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       if (compositingMode) {
         // 1D transfer function
         colorAux = tFunc.getColor(value);
-        voxel_color.r = voxel_color.g = voxel_color.b = colorAux.r;
+        voxel_color.r = colorAux.r;
+        voxel_color.g = colorAux.g;
+        voxel_color.b = colorAux.b;
 
         opacity = colorAux.a;
 
         // calculating ci
-        r = g = b = alpha = (1 - opacity) * r + opacity * voxel_color.r;
+        r = (1 - opacity) * r + opacity * voxel_color.r;
+        g = (1 - opacity) * g + opacity * voxel_color.g;
+        b = (1 - opacity) * b + opacity * voxel_color.b;
+        alpha = (1 - opacity) * alpha + opacity * voxel_color.a;
 
-        if (alpha > 1.0) {
+          if (alpha > 1.0) {
           alpha = 1;
           break;
         }
