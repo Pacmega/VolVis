@@ -268,6 +268,11 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     }
   }
 
+  public float interpolate(float g0, float g1, float factor) {
+    float result = (1 - factor)*g0 + factor*g1;
+    return result;
+  }
+
   //////////////////////////////////////////////////////////////////////
   ///////////////// FUNCTION TO BE IMPLEMENTED /////////////////////////
   //////////////////////////////////////////////////////////////////////
@@ -350,16 +355,18 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       }
       if (tf2dMode) {
         // 2D transfer function
-        voxel_color.r = 0;
-        voxel_color.g = 1;
-        voxel_color.b = 0;
-        voxel_color.a = 1;
-        opacity = 1;
 
-        r = voxel_color.r;
-        g = voxel_color.g;
-        b = voxel_color.b;
-        alpha = opacity;
+
+        colorAux = tFunc2D.color;
+        opacity = (1 - alpha) * computeOpacity2DTF(tFunc2D.baseIntensity, tFunc2D.radius,
+                                                   value, (gradients.getGradient(currentPos)).mag);
+
+        // calculating ci
+        r += opacity * colorAux.r;
+        g += opacity * colorAux.g;
+        b += opacity * colorAux.b;
+        alpha += opacity;
+        //System.err.println(tFunc2D.baseIntensity + " " + tFunc2D.radius  +" " + value +" "+  (gradients.getGradient(currentPos)).mag );
       }
       if (shadingMode) {
         // 1D transfer function
@@ -387,6 +394,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       nrSamples--;
     } while (nrSamples > 0);
 
+    System.err.println(" ");
     // computes the color
     int color = computeImageColor(r, g, b, alpha);
     return color;
@@ -575,9 +583,28 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
   public double computeOpacity2DTF(double material_value, double material_r, double voxelValue, double gradMagnitude) {
 
     double opacity = 0.0;
+    //System.err.println(gradMagnitude);
+    // Inside Triangle
+    // detection happens using a shifted modulus function
+    // y =  (max_grad /rad) | x  - base |  ->  defines triagle lines in our 2D plot
+    double slope =  (gradients.getMaxGradientMagnitude() / material_r );
+    double input =  (voxelValue - material_value);
+    //  defining  line definition || input
+    if( voxelValue  - material_value < 0.0  ) {
+      input = -input;
+    }
 
-    // to be implemented
+    // area inside triangle
+    if( gradMagnitude >= slope*input ){
+      // weird interpolation error
+      // We want to interpolate from apex to edge  ( input to border at input in x direction)
+      // if y = a(x -b) - > x = y/a +b
+      opacity =  tFunc2D.color.a ; //*interpolate(1, 0, (float)(input/ (input + material_value)));
+//      System.err.println("My x (o to" +  material_value + ")" + "," + input);
+//      System.err.println("My factor " +  input/ (input + material_value));
+//      System.err.println("My value " +  opacity);
 
+    }
     return opacity;
   }
 

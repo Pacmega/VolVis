@@ -21,6 +21,7 @@ public class VectorMath {
         v[2] = c2;
     }
 
+
     // compute dotproduct of vectors v and w
     public static double dotproduct(double[] v, double[] w) {
         double r = 0;
