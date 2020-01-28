@@ -57,6 +57,7 @@ public class RaycastRendererPanel extends javax.swing.JPanel {
         shadingCheckbox = new javax.swing.JCheckBox();
         IsoSurface = new javax.swing.JRadioButton();
         IsovalueTextBox = new javax.swing.JTextField();
+        toonShadingCheckbox = new javax.swing.JCheckBox();
         jLabel2 = new javax.swing.JLabel();
         Resolution = new javax.swing.JSlider();
         Resolution_label = new javax.swing.JLabel();
@@ -112,6 +113,13 @@ public class RaycastRendererPanel extends javax.swing.JPanel {
         IsoSurface.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 IsoSurfaceActionPerformed(evt);
+            }
+        });
+
+        toonShadingCheckbox.setText("Toon Shading");
+        toonShadingCheckbox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ToonShadingActionPerformed(evt);
             }
         });
 
@@ -173,6 +181,7 @@ public class RaycastRendererPanel extends javax.swing.JPanel {
                             .addComponent(mipButton, javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(slicerButton, javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(shadingCheckbox, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(toonShadingCheckbox, javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
                                 .addComponent(IsoSurface)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -196,7 +205,7 @@ public class RaycastRendererPanel extends javax.swing.JPanel {
                 .addComponent(slicerButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(mipButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGap(27, 27, 27)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(colorButton, javax.swing.GroupLayout.PREFERRED_SIZE, 29, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(IsoSurface)
@@ -204,7 +213,8 @@ public class RaycastRendererPanel extends javax.swing.JPanel {
                         .addComponent(IsovalueTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(jLabel2)
                         .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 29, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(toonShadingCheckbox)
+                .addGap(27, 27, 27)
                 .addComponent(compositingButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(tf2dButton)
@@ -243,6 +253,11 @@ public class RaycastRendererPanel extends javax.swing.JPanel {
         renderer.setIsoSurfaceMode();
     }//GEN-LAST:event_IsoSurfaceActionPerformed
 
+    private void ToonShadingActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_IsoSurfaceActionPerformed
+        // TODO add your handling code here:
+        renderer.setToonShadingMode(toonShadingCheckbox.isSelected());
+    }//GEN-LAST:event_IsoSurfaceActionPerformed
+
     private void IsovalueTextBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_IsovalueTextBoxActionPerformed
         // TODO add your handling code here:
         String s=this.IsovalueTextBox.getText();
@@ -269,6 +284,7 @@ public class RaycastRendererPanel extends javax.swing.JPanel {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButton IsoSurface;
+    private javax.swing.JCheckBox toonShadingCheckbox;
     private javax.swing.JTextField IsovalueTextBox;
     private javax.swing.JSlider Resolution;
     private javax.swing.JLabel Resolution_label;
