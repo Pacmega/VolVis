@@ -48,6 +48,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
   private boolean compositingMode = false;
   private boolean tf2dMode = false;
   private boolean shadingMode = false;
+  private boolean toonShading = false;
   private boolean isoMode = false;
   private float iso_value = 95;
   // This is a work around
@@ -260,16 +261,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       if (hitPos == null) {
         hitPos = currentPos;
       }
-      double[][] diffuseBands = new double[][]{
-              new double[]{0.2, 0.2},
-              new double[]{0.5, 0.5},
-              new double[]{0.7, 1}
-      };
-      double[][] specularBands = new double[][]{
-              new double[]{0.1, 0.5},
-              new double[]{0.5, 1}
-      };
-      TFColor color = computeToonShading(isoColor, this.gradients.getGradient(hitPos), lightVector, rayVector, diffuseBands, specularBands);
+      TFColor color = computeShading(isoColor, this.gradients.getGradient(hitPos), lightVector, rayVector);
       return computeImageColor(color.r, color.g, color.b, color.a);
     } else {
       return computeImageColor(0, 0, 0, 1);
@@ -345,21 +337,16 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     do {
       value = (int) (volume.getVoxelLinearInterpolate(currentPos));
 
-      if (compositingMode) {
+      if (compositingMode && !shadingMode) {
         // 1D transfer function
         colorAux = tFunc.getColor(value);
-        voxel_color.r = voxel_color.g = voxel_color.b = colorAux.r;
-
-        opacity = colorAux.a;
+        opacity = (1 - alpha) * colorAux.a;
 
         // calculating ci
-        r = g = b = alpha = (1 - opacity) * r + opacity * voxel_color.r;
-
-        if (alpha > 1.0) {
-          alpha = 1;
-          break;
-        }
-        // alpha = alpha + opacity;
+        r += opacity * colorAux.r;
+        g += opacity * colorAux.g;
+        b += opacity * colorAux.b;
+        alpha += opacity;
       }
       if (tf2dMode) {
         // 2D transfer function
@@ -375,18 +362,18 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
         alpha = opacity;
       }
       if (shadingMode) {
-        // Shading mode on
-        voxel_color.r = 1;
-        voxel_color.g = 0;
-        voxel_color.b = 1;
-        voxel_color.a = 1;
-        opacity = 1;
+        // 1D transfer function
+        colorAux = tFunc.getColor(value);
+        if (colorAux.a > 0) {
+          TFColor color = computeShading(colorAux, gradients.getGradient(currentPos), lightVector, rayVector);
+          opacity = (1 - alpha) * color.a;
 
-        r = voxel_color.r;
-        g = voxel_color.g;
-        b = voxel_color.b;
-        alpha = opacity;
-
+          // calculating ci
+          r += opacity * color.r;
+          g += opacity * color.g;
+          b += opacity * color.b;
+          alpha += opacity;
+        }
       }
 
       for (int i = 0; i < 3; i++) {
@@ -403,6 +390,25 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     // computes the color
     int color = computeImageColor(r, g, b, alpha);
     return color;
+  }
+
+
+  public TFColor computeShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector,
+                                     double[] rayVector) {
+    if (toonShading) {
+      double[][] diffuseBands = new double[][]{
+              new double[]{0.2, 0.2},
+              new double[]{0.5, 0.5},
+              new double[]{0.7, 1}
+      };
+      double[][] specularBands = new double[][]{
+              new double[]{0.1, 0.5},
+              new double[]{0.5, 1}
+      };
+      return computeToonShading(voxel_color, gradient, lightVector, rayVector, diffuseBands, specularBands);
+    } else {
+      return computePhongShading(voxel_color, gradient, lightVector, rayVector);
+    }
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -429,7 +435,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     double sWeight = Math.max(k_s * Math.pow(VectorMath.dotproduct(reflectVector, rayVector), alpha), 0.);
     double dWeight = Math.max(k_d * reflectDot, 0.);
     double weight = k_a + dWeight + sWeight;
-    TFColor color = new TFColor(voxel_color.r * weight, voxel_color.g * weight, voxel_color.b * weight, 1);
+    TFColor color = new TFColor(voxel_color.r * weight, voxel_color.g * weight, voxel_color.b * weight, voxel_color.a);
     return color;
   }
 
@@ -781,6 +787,10 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
   // Do NOT modify this function
   public void setIsoSurfaceMode() {
     setMode(false, false, false, false, true);
+  }
+
+  public void setToonShadingMode(boolean value) {
+    toonShading = value;
   }
 
   // Do NOT modify this function
