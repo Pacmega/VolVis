@@ -791,6 +791,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
 
   public void setToonShadingMode(boolean value) {
     toonShading = value;
+    changed();
   }
 
   // Do NOT modify this function
