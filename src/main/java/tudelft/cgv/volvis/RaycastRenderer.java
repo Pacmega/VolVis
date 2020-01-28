@@ -392,19 +392,11 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     return color;
   }
 
-
-  public TFColor computeShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector,
-                                     double[] rayVector) {
+  public TFColor computeShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector, double[] rayVector) {
     if (toonShading) {
-      double[][] diffuseBands = new double[][]{
-              new double[]{0.2, 0.2},
-              new double[]{0.5, 0.5},
-              new double[]{0.7, 1}
-      };
-      double[][] specularBands = new double[][]{
-              new double[]{0.1, 0.5},
-              new double[]{0.5, 1}
-      };
+      double[][] diffuseBands = new double[][] { new double[] { 0.2, 0.2 }, new double[] { 0.5, 0.5 },
+          new double[] { 0.7, 1 } };
+      double[][] specularBands = new double[][] { new double[] { 0.1, 0.5 }, new double[] { 0.5, 1 } };
       return computeToonShading(voxel_color, gradient, lightVector, rayVector, diffuseBands, specularBands);
     } else {
       return computePhongShading(voxel_color, gradient, lightVector, rayVector);
@@ -448,28 +440,28 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
   ////////////////////////////////////////////////////////////////////// and view
   ////////////////////////////////////////////////////////////////////// vector
   public TFColor computeToonShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector,
-                                    double[] rayVector, double[][] diffuseBands, double[][] specularBands) {
+      double[] rayVector, double[][] diffuseBands, double[][] specularBands) {
     double k_a = 0.3;
     double k_d = 0.4;
     double k_s = 0.3;
     double alpha = 20;
 
     double[] gradientVector = new double[] { gradient.x / gradient.mag, gradient.y / gradient.mag,
-            gradient.z / gradient.mag };
+        gradient.z / gradient.mag };
     double reflectDot = VectorMath.dotproduct(lightVector, gradientVector);
     double[] reflectVector = new double[] { 2 * gradientVector[0] * reflectDot - lightVector[0],
-            2 * gradientVector[1] * reflectDot - lightVector[1], 2 * gradientVector[2] * reflectDot - lightVector[2], };
+        2 * gradientVector[1] * reflectDot - lightVector[1], 2 * gradientVector[2] * reflectDot - lightVector[2], };
     double specularIntensity = Math.pow(VectorMath.dotproduct(reflectVector, rayVector), alpha);
 
     double sWeight = 0;
-    for (double[] band : specularBands){
+    for (double[] band : specularBands) {
       if (band[0] < specularIntensity) {
         sWeight = k_s * band[1];
       }
     }
 
     double dWeight = 0;
-    for (double[] band : diffuseBands){
+    for (double[] band : diffuseBands) {
       if (band[0] < reflectDot) {
         dWeight = k_d * band[1];
       }
