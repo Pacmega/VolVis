@@ -210,7 +210,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
   }
 
   /**
-   * Calculate the image color of a ray using ray tracing
+   * Calculate the image color of  the iso surface using ray tracing
    * @param entryPoint Start point
    * @param exitPoint End point
    * @param rayVector Ray direction
