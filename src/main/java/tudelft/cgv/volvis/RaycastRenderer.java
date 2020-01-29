@@ -586,7 +586,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     //System.err.println(gradMagnitude);
     // Inside Triangle
     // detection happens using a shifted modulus function
-    // y =  (max_grad /rad) | x  - base |  ->  defines triagle lines in our 2D plot
+    // y =  (max_grad /rad) | x  - base |  ->  defines triangle lines in our 2D plot
     double slope =  (gradients.getMaxGradientMagnitude() / material_r );
     double input =  (voxelValue - material_value);
     //  defining  line definition || input
@@ -599,7 +599,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       // weird interpolation error
       // We want to interpolate from apex to edge  ( input to border at input in x direction)
       // if y = a(x -b) - > x = y/a +b
-      opacity =  tFunc2D.color.a ; //*interpolate(1, 0, (float)(input/ (input + material_value)));
+      opacity = tFunc2D.color.a * interpolate(1, 0, (float)(input/ (gradMagnitude /slope) ));
 //      System.err.println("My x (o to" +  material_value + ")" + "," + input);
 //      System.err.println("My factor " +  input/ (input + material_value));
 //      System.err.println("My value " +  opacity);
