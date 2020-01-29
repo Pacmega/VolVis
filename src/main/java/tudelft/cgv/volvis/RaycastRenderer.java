@@ -250,7 +250,7 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       nrSamples--;
     } while (nrSamples > 0);
     // No hits were found return black
-    return computeImageColor(0, 0, 0, 1);
+    return computeImageColor(0, 0, 0, 0);
   }
 
   public float interpolate(float g0, float g1, float factor) {
@@ -366,7 +366,6 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       nrSamples--;
     } while (nrSamples > 0);
 
-    System.err.println(" ");
     // computes the color
     int color = computeImageColor(r, g, b, alpha);
     return color;
