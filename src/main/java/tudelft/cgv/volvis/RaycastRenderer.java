@@ -328,7 +328,6 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     double opacity = 0;
     int value;
 
-    TFColor voxel_color = new TFColor();
     TFColor colorAux = new TFColor();
 
     // To be Implemented this function right now just gives back a constant color
@@ -342,45 +341,38 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     do {
       value = (int) (volume.getVoxelLinearInterpolate(currentPos));
 
-      if (compositingMode && !shadingMode) {
+      if (compositingMode) {
         // 1D transfer function
         colorAux = tFunc.getColor(value);
         opacity = (1 - alpha) * colorAux.a;
+        if (opacity > 0) {
+          if (shadingMode) {
+            colorAux = computePhongShading(colorAux, gradients.getGradient(currentPos), lightVector, rayVector);
+          }
 
-        // calculating ci
-        r += opacity * colorAux.r;
-        g += opacity * colorAux.g;
-        b += opacity * colorAux.b;
-        alpha += opacity;
+          // calculating ci
+          r += opacity * colorAux.r;
+          g += opacity * colorAux.g;
+          b += opacity * colorAux.b;
+          alpha += opacity;
+        }
       }
       if (tf2dMode) {
         // 2D transfer function
-
-
-        colorAux = tFunc2D.color;
         opacity = (1 - alpha) * computeOpacity2DTF(tFunc2D.baseIntensity, tFunc2D.radius,
                                                    value, (gradients.getGradient(currentPos)).mag);
-
-        // calculating ci
-        r += opacity * colorAux.r;
-        g += opacity * colorAux.g;
-        b += opacity * colorAux.b;
-        alpha += opacity;
-        //System.err.println(tFunc2D.baseIntensity + " " + tFunc2D.radius  +" " + value +" "+  (gradients.getGradient(currentPos)).mag );
-      }
-      if (shadingMode) {
-        // 1D transfer function
-        colorAux = tFunc.getColor(value);
-        if (colorAux.a > 0) {
-          TFColor color = computeShading(colorAux, gradients.getGradient(currentPos), lightVector, rayVector);
-          opacity = (1 - alpha) * color.a;
-
+        if (opacity > 0) {
+          colorAux = tFunc2D.color;
+          if (shadingMode) {
+            colorAux = computePhongShading(colorAux, gradients.getGradient(currentPos), lightVector, rayVector);
+          }
           // calculating ci
-          r += opacity * color.r;
-          g += opacity * color.g;
-          b += opacity * color.b;
+          r += opacity * colorAux.r;
+          g += opacity * colorAux.g;
+          b += opacity * colorAux.b;
           alpha += opacity;
         }
+        //System.err.println(tFunc2D.baseIntensity + " " + tFunc2D.radius  +" " + value +" "+  (gradients.getGradient(currentPos)).mag );
       }
 
       for (int i = 0; i < 3; i++) {
