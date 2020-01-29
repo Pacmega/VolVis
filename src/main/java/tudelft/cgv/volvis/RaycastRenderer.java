@@ -209,102 +209,81 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     return color;
   }
 
-  //////////////////////////////////////////////////////////////////////
-  ///////////////// FUNCTION TO BE IMPLEMENTED /////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  // Function that updates the "image" attribute using the Isosurface raycasting
-  // It returns the color assigned to a ray/pixel given it's starting point
-  ////////////////////////////////////////////////////////////////////// (entryPoint)
-  ////////////////////////////////////////////////////////////////////// and the
-  ////////////////////////////////////////////////////////////////////// direction
-  ////////////////////////////////////////////////////////////////////// of the
-  ////////////////////////////////////////////////////////////////////// ray(rayVector).
-  // exitPoint is the last point.
-  // ray must be sampled with a distance defined by the sampleStep
-
+  /**
+   * Calculate the image color of a ray using ray tracing
+   * @param entryPoint Start point
+   * @param exitPoint End point
+   * @param rayVector Ray direction
+   * @param sampleStep Step size
+   * @return
+   */
   public int traceRayIso(double[] entryPoint, double[] exitPoint, double[] rayVector, double sampleStep) {
     double[] lightVector = new double[3];
-    // We define the light vector as directed toward the view point (which is the
-    // source of the light)
-    // another light vector would be possible why not sample _step?
     VectorMath.setVector(lightVector, rayVector[0], rayVector[1], rayVector[2]);
 
-    // To be Implemented
-
-    // Initialization of the colors as floating point values
-    boolean hit = false;
-
-    // To be Implemented this function right now just gives back a constant color
     double distance = VectorMath.distance(entryPoint, exitPoint);
     int nrSamples = 1 + (int) Math.floor(distance / sampleStep);
+
     double[] increments = new double[3];
     double[] currentPos = new double[3];
     VectorMath.setVector(increments, rayVector[0] * sampleStep, rayVector[1] * sampleStep, rayVector[2] * sampleStep);
     VectorMath.setVector(currentPos, entryPoint[0], entryPoint[1], entryPoint[2]);
+
+    // Remember the previousValue for bisection_accuracy
     float previousValue = 0f;
-    double[] hitPos = null;
     do {
       float value = volume.getVoxelLinearInterpolate(currentPos);
+
+      // Check if value is a hit
       if (value > this.iso_value) {
-        hit = true;
-        hitPos = bisection_accuracy(currentPos, increments, sampleStep, previousValue, value, iso_value);
-        break;
+        // Apply bisection accuracy and shading before returning the color
+        double[] hitPos = bisection_accuracy(currentPos, increments, sampleStep, previousValue, value, iso_value);
+        TFColor color = computeShading(isoColor, this.gradients.getGradient(hitPos), lightVector, rayVector);
+        return computeImageColor(color.r, color.g, color.b, color.a);
       }
+
+      // Increment current position and save previous value
       previousValue = value;
       for (int i = 0; i < 3; i++) {
         currentPos[i] += increments[i];
       }
       nrSamples--;
     } while (nrSamples > 0);
-    // computes the color
-    if (hit) {
-      if (hitPos == null) {
-        hitPos = currentPos;
-      }
-      TFColor color = computeShading(isoColor, this.gradients.getGradient(hitPos), lightVector, rayVector);
-      return computeImageColor(color.r, color.g, color.b, color.a);
-    } else {
-      return computeImageColor(0, 0, 0, 1);
-    }
+    // No hits were found return black
+    return computeImageColor(0, 0, 0, 1);
   }
 
   public float interpolate(float g0, float g1, float factor) {
-    float result = (1 - factor)*g0 + factor*g1;
+    float result = (1 - factor) * g0 + factor * g1;
     return result;
   }
 
-  //////////////////////////////////////////////////////////////////////
-  ///////////////// FUNCTION TO BE IMPLEMENTED /////////////////////////
-  //////////////////////////////////////////////////////////////////////
-
-  // Given the current sample position, increment vector of the sample (vector
-  // from previous sample to current sample) and sample Step.
-  // Previous sample value and current sample value, isovalue value
-  // The function should search for a position where the iso_value passes that it
-  // is more precise.
+  /**
+   * Returns an estimate of the point closest to the iso value given the current
+   * and previous value
+   * 
+   * @param currentPos    Current sample position
+   * @param increments    Sample step vector
+   * @param sampleStep    Sample step magnitude
+   * @param previousvalue Previous sample value
+   * @param value         Current sample value
+   * @param iso_value     Target value
+   * @return Estimated position of the iso value
+   */
   public double[] bisection_accuracy(double[] currentPos, double[] increments, double sampleStep, float previousvalue,
       float value, float iso_value) {
+    // Get the difference to the previous value
     double diffPrev = value - previousvalue;
+    // Get the difference to the target value
     double diffIso = value - iso_value;
+    // Get the scale based on these differences
     double scale = diffIso / diffPrev;
+
+    // Get the position between both steps given the scale
     return new double[] { currentPos[0] - increments[0] * scale, currentPos[1] - increments[1] * scale,
         currentPos[2] - increments[2] * scale };
   }
 
-  //////////////////////////////////////////////////////////////////////
-  ///////////////// FUNCTION TO BE IMPLEMENTED /////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  // Function that updates the "image" attribute using the compositing//
-  ////////////////////////////////////////////////////////////////////// accumulatted
-  ////////////////////////////////////////////////////////////////////// raycasting
-  // It returns the color assigned to a ray/pixel given it's starting point
-  ////////////////////////////////////////////////////////////////////// (entryPoint)
-  ////////////////////////////////////////////////////////////////////// and the
-  ////////////////////////////////////////////////////////////////////// direction
-  ////////////////////////////////////////////////////////////////////// of the
-  ////////////////////////////////////////////////////////////////////// ray(rayVector).
-  // exitPoint is the last point.
-  // ray must be sampled with a distance defined by the sampleStep
 
   public int traceRayComposite(double[] entryPoint, double[] exitPoint, double[] rayVector, double sampleStep) {
     double[] lightVector = new double[3];
@@ -359,8 +338,8 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
       }
       if (tf2dMode) {
         // 2D transfer function
-        opacity = (1 - alpha) * computeOpacity2DTF(tFunc2D.baseIntensity, tFunc2D.radius,
-                                                   value, (gradients.getGradient(currentPos)).mag);
+        opacity = (1 - alpha)
+            * computeOpacity2DTF(tFunc2D.baseIntensity, tFunc2D.radius, value, (gradients.getGradient(currentPos)).mag);
         if (opacity > 0) {
           colorAux = tFunc2D.color;
           if (shadingMode) {
@@ -372,7 +351,8 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
           b += opacity * colorAux.b;
           alpha += opacity;
         }
-        //System.err.println(tFunc2D.baseIntensity + " " + tFunc2D.radius  +" " + value +" "+  (gradients.getGradient(currentPos)).mag );
+        // System.err.println(tFunc2D.baseIntensity + " " + tFunc2D.radius +" " + value
+        // +" "+ (gradients.getGradient(currentPos)).mag );
       }
 
       for (int i = 0; i < 3; i++) {
@@ -392,80 +372,116 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
     return color;
   }
 
+  /**
+   * Select the correct shading method (Toon or phong)
+   *
+   * @param voxel_color Color at sample point
+   * @param gradient    Gradient at sample point
+   * @param lightVector Vector from sample point to the light
+   * @param rayVector   Vector from sample point to the camera
+   * @return Shaded color
+   */
   public TFColor computeShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector, double[] rayVector) {
     if (toonShading) {
-      double[][] diffuseBands = new double[][] { new double[] { 0.2, 0.2 }, new double[] { 0.5, 0.5 },
-          new double[] { 0.7, 1 } };
-      double[][] specularBands = new double[][] { new double[] { 0.1, 0.5 }, new double[] { 0.5, 1 } };
+      // The different diffusion and specular bands used for toon shading
+      double[][] diffuseBands = { { 0.2, 0.2 }, { 0.5, 0.5 }, { 0.7, 1 } };
+      double[][] specularBands = { { 0.1, 0.5 }, { 0.5, 1 } };
       return computeToonShading(voxel_color, gradient, lightVector, rayVector, diffuseBands, specularBands);
     } else {
       return computePhongShading(voxel_color, gradient, lightVector, rayVector);
     }
   }
 
-  //////////////////////////////////////////////////////////////////////
-  ///////////////// FUNCTION TO BE IMPLEMENTED /////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  // Compute Phong Shading given the voxel color (material color), the gradient,
-  ////////////////////////////////////////////////////////////////////// the light
-  ////////////////////////////////////////////////////////////////////// vector
-  ////////////////////////////////////////////////////////////////////// and view
-  ////////////////////////////////////////////////////////////////////// vector
+  /**
+   * Compute shaded color using phong shading Calculates diffusion and specular
+   * components and adds an ambient value
+   *
+   * @param voxel_color Color at sample point
+   * @param gradient    Gradient at sample point
+   * @param lightVector Vector from sample point to the light
+   * @param rayVector   Vector from sample point to the camera
+   * @return
+   */
   public TFColor computePhongShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector,
       double[] rayVector) {
-    double k_a = 0.1;
-    double k_d = 0.7;
-    double k_s = 0.2;
-    double alpha = 100;
+    // Define phong components
+    double k_a = 0.1; // Ambient
+    double k_d = 0.7; // Diffusion
+    double k_s = 0.2; // Specular
+    double alpha = 100; // Shininess (lower = wide and dimm, higher = small and bright)
 
+    // Calculate normalized gradient vector
     double[] gradientVector = new double[] { gradient.x / gradient.mag, gradient.y / gradient.mag,
         gradient.z / gradient.mag };
-    double reflectDot = VectorMath.dotproduct(lightVector, gradientVector);
-    double[] reflectVector = new double[] { 2 * gradientVector[0] * reflectDot - lightVector[0],
-        2 * gradientVector[1] * reflectDot - lightVector[1], 2 * gradientVector[2] * reflectDot - lightVector[2], };
 
-    double sWeight = Math.max(k_s * Math.pow(VectorMath.dotproduct(reflectVector, rayVector), alpha), 0.);
+    double reflectDot = VectorMath.dotproduct(lightVector, gradientVector);
+    double[] reflectVector = { 2 * gradientVector[0] * reflectDot - lightVector[0],
+        2 * gradientVector[1] * reflectDot - lightVector[1], 2 * gradientVector[2] * reflectDot - lightVector[2] };
+
+    double specularIntensity = Math.pow(VectorMath.dotproduct(reflectVector, rayVector), alpha);
+
+    // Calculate the weights
+    double sWeight = Math.max(k_s * specularIntensity, 0.);
     double dWeight = Math.max(k_d * reflectDot, 0.);
+
+    // Add weights and set the final color
     double weight = k_a + dWeight + sWeight;
     TFColor color = new TFColor(voxel_color.r * weight, voxel_color.g * weight, voxel_color.b * weight, voxel_color.a);
     return color;
   }
 
-  //////////////////////////////////////////////////////////////////////
-  ///////////////// FUNCTION TO BE IMPLEMENTED /////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  // Compute Toon Shading given the voxel color (material color), the gradient,
-  ////////////////////////////////////////////////////////////////////// the light
-  ////////////////////////////////////////////////////////////////////// vector
-  ////////////////////////////////////////////////////////////////////// and view
-  ////////////////////////////////////////////////////////////////////// vector
+  /**
+   * Compute shaded color using toon shading Calculates diffusion and specular
+   * components and adds an ambient value according to phong shading But limits
+   * the values based on the defined diffusion and specular bands
+   *
+   * @param voxel_color   Color at sample point
+   * @param gradient      Gradient at sample point
+   * @param lightVector   Vector from sample point to the light
+   * @param rayVector     Vector from sample point to the camera
+   * @param diffuseBands  Visible diffusion bands (per value first = threshold,
+   *                      second = intensityValue)
+   * @param specularBands Visible specular bands (per value first = threshold,
+   *                      second = intensityValue)
+   * @return
+   */
   public TFColor computeToonShading(TFColor voxel_color, VoxelGradient gradient, double[] lightVector,
       double[] rayVector, double[][] diffuseBands, double[][] specularBands) {
-    double k_a = 0.3;
-    double k_d = 0.4;
-    double k_s = 0.3;
-    double alpha = 20;
+    // Define phong components
+    double k_a = 0.3; // Ambient
+    double k_d = 0.4; // Diffusion
+    double k_s = 0.3; // Specular
+    double alpha = 20; // Shininess (lower = wide and dimm, higher = small and bright)
 
+    // Calculate normalized gradient vector
     double[] gradientVector = new double[] { gradient.x / gradient.mag, gradient.y / gradient.mag,
         gradient.z / gradient.mag };
+
     double reflectDot = VectorMath.dotproduct(lightVector, gradientVector);
-    double[] reflectVector = new double[] { 2 * gradientVector[0] * reflectDot - lightVector[0],
-        2 * gradientVector[1] * reflectDot - lightVector[1], 2 * gradientVector[2] * reflectDot - lightVector[2], };
+    double[] reflectVector = { 2 * gradientVector[0] * reflectDot - lightVector[0],
+        2 * gradientVector[1] * reflectDot - lightVector[1], 2 * gradientVector[2] * reflectDot - lightVector[2] };
     double specularIntensity = Math.pow(VectorMath.dotproduct(reflectVector, rayVector), alpha);
 
+    // Use the different bands to set the final specular and diffusion weights
     double sWeight = 0;
     for (double[] band : specularBands) {
+      // Check if band should apply
       if (band[0] < specularIntensity) {
+        // Use band value to set the specular weight
         sWeight = k_s * band[1];
       }
     }
 
     double dWeight = 0;
     for (double[] band : diffuseBands) {
+      // Check if band should apply
       if (band[0] < reflectDot) {
+        // Use band value to set the diffusion weight
         dWeight = k_d * band[1];
       }
     }
+
+    // Add weights and set the final color
     double weight = k_a + dWeight + sWeight;
     TFColor color = new TFColor(voxel_color.r * weight, voxel_color.g * weight, voxel_color.b * weight, 1);
     return color;
@@ -575,26 +591,27 @@ public class RaycastRenderer extends Renderer implements TFChangeListener {
   public double computeOpacity2DTF(double material_value, double material_r, double voxelValue, double gradMagnitude) {
 
     double opacity = 0.0;
-    //System.err.println(gradMagnitude);
+    // System.err.println(gradMagnitude);
     // Inside Triangle
     // detection happens using a shifted modulus function
-    // y =  (max_grad /rad) | x  - base |  ->  defines triangle lines in our 2D plot
-    double slope =  (gradients.getMaxGradientMagnitude() / material_r );
-    double input =  (voxelValue - material_value);
-    //  defining  line definition || input
-    if( voxelValue  - material_value < 0.0  ) {
+    // y = (max_grad /rad) | x - base | -> defines triangle lines in our 2D plot
+    double slope = (gradients.getMaxGradientMagnitude() / material_r);
+    double input = (voxelValue - material_value);
+    // defining line definition || input
+    if (voxelValue - material_value < 0.0) {
       input = -input;
     }
 
     // area inside triangle
-    if( gradMagnitude >= slope*input ){
+    if (gradMagnitude >= slope * input) {
       // weird interpolation error
-      // We want to interpolate from apex to edge  ( input to border at input in x direction)
+      // We want to interpolate from apex to edge ( input to border at input in x
+      // direction)
       // if y = a(x -b) - > x = y/a +b
-      opacity = tFunc2D.color.a * interpolate(1, 0, (float)(input/ (gradMagnitude /slope) ));
-//      System.err.println("My x (o to" +  material_value + ")" + "," + input);
-//      System.err.println("My factor " +  input/ (input + material_value));
-//      System.err.println("My value " +  opacity);
+      opacity = tFunc2D.color.a * interpolate(1, 0, (float) (input / (gradMagnitude / slope)));
+      // System.err.println("My x (o to" + material_value + ")" + "," + input);
+      // System.err.println("My factor " + input/ (input + material_value));
+      // System.err.println("My value " + opacity);
 
     }
     return opacity;
